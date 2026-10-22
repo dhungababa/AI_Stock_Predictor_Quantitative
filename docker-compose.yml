@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  stock-predictor:
+    build: .
+    ports:
+      - "8503:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

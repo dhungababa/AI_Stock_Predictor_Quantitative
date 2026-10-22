@@ -1,0 +1,17 @@
+pandas
+numpy
+yfinance
+torch
+transformers
+scikit-learn
+ta
+streamlit
+matplotlib
+plotly
+xgboost
+requests
+beautifulsoup4
+joblib
+nest_asyncio
+aiohttp
+fpdf
