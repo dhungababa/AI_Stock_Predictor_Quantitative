@@ -19,7 +19,7 @@ class MicrobotResult:
         self.rationale = rationale
 
     def to_dict(self):
-        badge = "🟢 BULLISH" if self.vote == "BULLISH" else (" BEARISH" if self.vote == "BEARISH" else "🟡 NEUTRAL")
+        badge = " BULLISH" if self.vote == "BULLISH" else (" BEARISH" if self.vote == "BEARISH" else " NEUTRAL")
         return {
             "ID": f"#{self.bot_id}",
             "Microbot": self.name,

@@ -106,7 +106,7 @@ def build_swarm_pdf(ticker, current_p, vix, mandate, consensus_pct, bullish_cnt,
     pdf.set_font('Arial', size=8)
     for b in microbots:
         name = str(b.get('Microbot', '')).encode('latin-1', 'replace').decode('latin-1')
-        raw_vote = str(b.get('Raw_Vote', b.get('Vote', ''))).replace('🟢 ', '').replace(' ', '').replace('🟡 ', '')
+        raw_vote = str(b.get('Raw_Vote', b.get('Vote', ''))).replace(' ', '').replace(' ', '').replace(' ', '')
         metric = str(b.get('Key Metric', '')).encode('latin-1', 'replace').decode('latin-1')
         rat = str(b.get('Institutional Rationale', '')).encode('latin-1', 'replace').decode('latin-1')
         cat = str(b.get('Category', '')).encode('latin-1', 'replace').decode('latin-1')
@@ -271,7 +271,7 @@ def scan_nifty_basket():
                         
                         results.append({
                             "Ticker": ticker,
-                            "Signal": "🟢 BUY" if pred == 1 else " SELL",
+                            "Signal": " BUY" if pred == 1 else " SELL",
                             "Conviction": f"{conf:.1f}%",
                             "Raw_Conviction": conf,
                             "Raw_Pred": pred,
@@ -390,12 +390,12 @@ with tab_single:
                     owns_stock = "Yes" in portfolio_status
                     if pred == 1:
                         if confidence > 55:
-                            pred_text = "🟢 HOLD POSITION" if owns_stock else "🟢 BUY NOW"
+                            pred_text = " HOLD POSITION" if owns_stock else " BUY NOW"
                             pred_desc = "(AI PREDICTS FURTHER GAINS)" if owns_stock else "(AI PREDICTS UPTREND)"
                             pred_color = "#00d084"
                             bg_color = "rgba(0, 208, 132, 0.1)"
                         else:
-                            pred_text = "🟡 HOLD SIGNAL" if owns_stock else "🟡 WAIT/DO NOT BUY YET"
+                            pred_text = " HOLD SIGNAL" if owns_stock else " WAIT/DO NOT BUY YET"
                             pred_desc = "(WEAK BULLISH)"
                             pred_color = "#ca8a04"
                             bg_color = "rgba(202, 138, 4, 0.1)"
@@ -406,7 +406,7 @@ with tab_single:
                             pred_color = "#dc2626"
                             bg_color = "rgba(220, 38, 38, 0.1)"
                         else:
-                            pred_text = "🟡 HOLD SIGNAL" if owns_stock else "🟡 WAIT/DO NOT BUY YET"
+                            pred_text = " HOLD SIGNAL" if owns_stock else " WAIT/DO NOT BUY YET"
                             pred_desc = "(WEAK BEARISH)"
                             pred_color = "#ca8a04"
                             bg_color = "rgba(202, 138, 4, 0.1)"
@@ -818,7 +818,7 @@ with tab_radar:
         
         c_r1, c_r2, c_r3 = st.columns(3)
         with c_r1:
-            ui_theme.glass_metric(top_long, "Top Long Alpha Pick", "🟢")
+            ui_theme.glass_metric(top_long, "Top Long Alpha Pick", "")
         with c_r2:
             ui_theme.glass_metric(top_short, "Top Hedge / Short Pick", "")
         with c_r3:
@@ -1038,7 +1038,7 @@ with tab_swarm:
         <div style="text-align: right; min-width: 200px;">
             <div style="font-size: 12px; color: #94a3b8; font-weight: 600;">COMMITTEE CONSENSUS</div>
             <div style="font-size: 32px; font-weight: 900; color: {mandate_color};">{consensus:.0f}%</div>
-            <div style="font-size: 12px; color: #94a3b8;">🟢 {bulls} Bulls &nbsp;|&nbsp;  {bears} Bears &nbsp;|&nbsp; 🟡 {neutrals} Neutral</div>
+            <div style="font-size: 12px; color: #94a3b8;"> {bulls} Bulls &nbsp;|&nbsp;  {bears} Bears &nbsp;|&nbsp;  {neutrals} Neutral</div>
         </div>
     </div>
 </div>
