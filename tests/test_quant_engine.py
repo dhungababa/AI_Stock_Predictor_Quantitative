@@ -113,3 +113,41 @@ def test_quant_dossier_pdf_generation():
     assert isinstance(pdf_bytes, bytes)
     assert len(pdf_bytes) > 500  # Valid non-empty PDF binary
     assert pdf_bytes.startswith(b"%PDF")
+
+def test_11_microbot_swarm_execution():
+    """Verify that the 11-Microbot Quant Committee executes and returns valid metrics."""
+    from src.microbots import QuantMicrobotSwarm
+    
+    # Synthetic 25-day daily series representing healthy NSE stock
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=25, freq='B')
+    close_vals = np.linspace(1150.0, 1220.0, 25)
+    df_bars = pd.DataFrame({
+        'Open': close_vals - 2.0,
+        'High': close_vals + 8.0,
+        'Low': close_vals - 5.0,
+        'Close': close_vals,
+        'Volume': [1500000] * 25
+    }, index=dates)
+    
+    headlines = [
+        "Reliance expands retail footprint with robust Q2 operational margin",
+        "Analysts maintain positive momentum outlook for Indian bluechips"
+    ]
+    
+    swarm = QuantMicrobotSwarm("RELIANCE.NS")
+    res = swarm.run_all(df_bars, headlines, vix_value=15.2, xgb_prob=0.74)
+    
+    assert res['ticker'] == "RELIANCE.NS"
+    assert len(res['microbots']) == 11
+    assert res['bullish_votes'] >= 5
+    assert 0.0 <= res['consensus_pct'] <= 100.0
+    assert "MANDATE" in res['cio_thesis'] or "BUY" in res['cio_mandate'] or "HOLD" in res['cio_mandate']
+    
+    # Verify every microbot has required schema
+    for b in res['microbots']:
+        assert "ID" in b
+        assert "Microbot" in b
+        assert "Category" in b
+        assert b["Raw_Vote"] in ["BULLISH", "BEARISH", "NEUTRAL"]
+        assert "Key Metric" in b
+        assert len(b["Institutional Rationale"]) > 10

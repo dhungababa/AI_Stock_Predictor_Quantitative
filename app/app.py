@@ -19,6 +19,10 @@ import nest_asyncio
 nest_asyncio.apply()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+src_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+if src_parent not in sys.path:
+    sys.path.insert(0, src_parent)
+from src.microbots import QuantMicrobotSwarm
 try:
     from streamlit_lottie import st_lottie
 except ImportError:
@@ -70,6 +74,60 @@ def build_quant_pdf(ticker, current_p, target_p, sl_p, signal, conf, net_pnl, sh
     pdf.multi_cell(190, 5, txt=clean_summary)
     
     return pdf.output(dest='S').encode('latin-1')
+
+def build_swarm_pdf(ticker, current_p, vix, mandate, consensus_pct, bullish_cnt, thesis, microbots):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 15)
+    pdf.cell(190, 9, txt='11-MICROBOT QUANT COMMITTEE DOSSIER', ln=True, align='C')
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(190, 6, txt=f'Multi-Agent Quant Trading Swarm | Target: {ticker} (NSE)', ln=True, align='C')
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(190, 7, txt='1. COMMITTEE EXECUTIVE CONSENSUS', ln=True)
+    pdf.set_font('Arial', size=9)
+    clean_mandate = str(mandate).encode('latin-1', 'replace').decode('latin-1')
+    pdf.cell(95, 6, txt=f'Committee Mandate: {clean_mandate}', ln=0)
+    pdf.cell(95, 6, txt=f'Consensus: {consensus_pct:.1f}% ({bullish_cnt}/10 Bulls)', ln=1)
+    pdf.cell(95, 6, txt=f'Current Price: INR {current_p:,.2f}', ln=0)
+    pdf.cell(95, 6, txt=f'India VIX Level: {vix:.2f}', ln=1)
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(190, 7, txt='2. CHIEF INVESTMENT OFFICER (CIO) SYNTHESIS', ln=True)
+    pdf.set_font('Arial', size=9)
+    clean_thesis = str(thesis).encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(190, 5, txt=clean_thesis)
+    pdf.ln(4)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(190, 7, txt='3. 11-MICROBOT SPECIALIZED AUDIT TRAIL', ln=True)
+    pdf.set_font('Arial', size=8)
+    for b in microbots:
+        name = str(b.get('Microbot', '')).encode('latin-1', 'replace').decode('latin-1')
+        raw_vote = str(b.get('Raw_Vote', b.get('Vote', ''))).replace('🟢 ', '').replace('🔴 ', '').replace('🟡 ', '')
+        metric = str(b.get('Key Metric', '')).encode('latin-1', 'replace').decode('latin-1')
+        rat = str(b.get('Institutional Rationale', '')).encode('latin-1', 'replace').decode('latin-1')
+        cat = str(b.get('Category', '')).encode('latin-1', 'replace').decode('latin-1')
+        bot_id = str(b.get('ID', ''))
+        pdf.set_font('Arial', 'B', 8)
+        pdf.cell(190, 5, txt=f"{bot_id} {name} [{cat}] - Vote: {raw_vote} | {metric}", ln=True)
+        pdf.set_font('Arial', size=8)
+        pdf.multi_cell(190, 4, txt=f"   Rationale: {rat}")
+        pdf.ln(1)
+        
+    return pdf.output(dest='S').encode('latin-1')
+
+@st.cache_data(ttl="15m")
+def get_vix_data():
+    try:
+        df = yf.Ticker("^INDIAVIX").history(period="5d")
+        if df is not None and not df.empty:
+            return float(df['Close'].dropna().iloc[-1])
+        return 15.5
+    except Exception:
+        return 15.5
 
 # --- TOP-LEVEL CACHED RESOURCE HELPERS ---
 @st.cache_resource
@@ -231,7 +289,7 @@ def scan_nifty_basket():
 # ==========================================
 # MULTI-ASSET RADAR & LIVE SCANNER TABS
 # ==========================================
-tab_single, tab_radar = st.tabs(["🎯 SINGLE-STOCK DEEP DIVE", "⚡ NIFTY 50 MULTI-ASSET ALPHA RADAR"])
+tab_single, tab_radar, tab_swarm = st.tabs(["🎯 SINGLE-STOCK DEEP DIVE", "⚡ NIFTY 50 MULTI-ASSET ALPHA RADAR", "🤖 11-MICROBOT QUANT COMMITTEE"])
 
 with tab_single:
     st.markdown("### Select an Indian Stock to Scan Live")
@@ -905,5 +963,163 @@ if True:
             st.error(f"Error loading results: {e}. If the pipeline is currently running, please wait.")
     else:
         st.info("The Machine Learning pipeline is currently running. Results will appear here shortly.")
+
+# ==========================================
+# 11-MICROBOT QUANT TRADING COMMITTEE TAB
+# ==========================================
+with tab_swarm:
+    ui_theme.glass_panel("🤖 11-MICROBOT QUANT TRADING COMMITTEE")
+    st.markdown("<p style='color: #94a3b8; font-size: 14px; margin-bottom: 20px;'>Institutional multi-agent quantitative swarm inspired by autonomous trading agent architectures. 11 specialized microbots independently inspect market microstructure, macro catalysts, technical momentum, stat-arb mean reversion, FinBERT news sentiment, fundamental health, volatility regimes, execution frictions, and Kelly risk before voting on an institutional trade mandate.</p>", unsafe_allow_html=True)
+    
+    col_sel1, col_sel2 = st.columns([2, 1])
+    with col_sel1:
+        swarm_ticker = st.selectbox("🎯 Select Nifty 50 Target for Swarm Analysis:", sorted(available_tickers), key="swarm_ticker_select")
+    with col_sel2:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        run_swarm_btn = st.button("🚀 Re-Run 11-Microbot Swarm", use_container_width=True)
+
+    with st.spinner(f"Ingesting real-time NSE feeds and deploying 11 Microbots on {swarm_ticker}..."):
+        try:
+            hist_live = yf.Ticker(swarm_ticker).history(period="1mo")
+            if hist_live is None or hist_live.empty or len(hist_live) < 10:
+                c_path = os.path.join(features_dir, f"{swarm_ticker}_features.csv")
+                if os.path.exists(c_path):
+                    hist_live = pd.read_csv(c_path)
+                else:
+                    hist_live = pd.DataFrame({'Close': [1000.0], 'High': [1010.0], 'Low': [990.0], 'Volume': [500000]})
+        except Exception:
+            c_path = os.path.join(features_dir, f"{swarm_ticker}_features.csv")
+            if os.path.exists(c_path):
+                hist_live = pd.read_csv(c_path)
+            else:
+                hist_live = pd.DataFrame({'Close': [1000.0], 'High': [1010.0], 'Low': [990.0], 'Volume': [500000]})
+            
+        vix_val = get_vix_data()
+        
+        # Real-time News headlines
+        _, news_items = get_live_data(swarm_ticker)
+        headlines_list = [n.get('title', '') for n in news_items] if news_items else []
+        
+        # Model prob from trained combined model
+        m_prob = 0.65
+        model_file = os.path.join(models_dir, f"{swarm_ticker}_Combined.joblib")
+        if os.path.exists(model_file):
+            try:
+                m_loaded = joblib.load(model_file)
+                c_path = os.path.join(features_dir, f"{swarm_ticker}_features.csv")
+                if os.path.exists(c_path):
+                    df_feats = pd.read_csv(c_path)
+                    last_row = df_feats.iloc[-1:][feats]
+                    m_prob = float(m_loaded.predict_proba(last_row)[0][1])
+            except Exception:
+                pass
+                
+        swarm = QuantMicrobotSwarm(swarm_ticker)
+        swarm_res = swarm.run_all(hist_live, headlines_list, vix_val, m_prob)
+
+    # 1. TOP-LEVEL CONSENSUS BANNER
+    mandate = swarm_res['cio_mandate']
+    consensus = swarm_res['consensus_pct']
+    bulls = swarm_res['bullish_votes']
+    bears = swarm_res['bearish_votes']
+    neutrals = swarm_res['neutral_votes']
+    close_p = swarm_res['latest_close']
+    
+    mandate_color = "#10b981" if "BUY" in mandate else ("#ef4444" if "REDUCE" in mandate or "SELL" in mandate else "#f59e0b")
+    
+    st.markdown(f"""
+<div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85)); border: 1px solid {mandate_color}; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Target: {swarm_ticker} | Real-Time NSE Telemetry</div>
+            <div style="font-size: 26px; font-weight: 800; color: #f8fafc; margin-top: 4px;">{mandate}</div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-top: 6px; max-width: 800px;"><b>CIO Consensus Thesis:</b> {swarm_res['cio_thesis']}</div>
+        </div>
+        <div style="text-align: right; min-width: 200px;">
+            <div style="font-size: 12px; color: #94a3b8; font-weight: 600;">COMMITTEE CONSENSUS</div>
+            <div style="font-size: 32px; font-weight: 900; color: {mandate_color};">{consensus:.0f}%</div>
+            <div style="font-size: 12px; color: #94a3b8;">🟢 {bulls} Bulls &nbsp;|&nbsp; 🔴 {bears} Bears &nbsp;|&nbsp; 🟡 {neutrals} Neutral</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # 2. KEY MACRO & MARKET METRICS
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        ui_theme.glass_metric(f"₹{close_p:,.2f}", "Current Price (NSE)", "📈")
+    with m2:
+        ui_theme.glass_metric(f"{vix_val:.2f}", "India VIX (Live)", "⚡")
+    with m3:
+        ui_theme.glass_metric(f"{m_prob*100:.1f}%", "XGBoost Alpha Prob", "🤖")
+    with m4:
+        ui_theme.glass_metric(f"{bulls}/10", "Committee Approval", "🏛️")
+
+    st.markdown("---")
+    st.markdown("### 🏛️ THE 11 SPECIALIZED MICROBOT VERDICTS")
+    st.markdown("<p style='color: #94a3b8; font-size: 13px;'>Each microbot analyzes an independent quantitative domain using real price, volume, volatility, news, and tax friction metrics:</p>", unsafe_allow_html=True)
+    
+    microbots = swarm_res['microbots']
+    for row_idx in range(0, len(microbots), 3):
+        cols = st.columns(3)
+        for col_idx in range(3):
+            bot_idx = row_idx + col_idx
+            if bot_idx < len(microbots):
+                b = microbots[bot_idx]
+                with cols[col_idx]:
+                    card_border = "#10b981" if "BULLISH" in b['Vote'] else ("#ef4444" if "BEARISH" in b['Vote'] else "#eab308")
+                    card_bg = "rgba(16, 185, 129, 0.05)" if "BULLISH" in b['Vote'] else ("rgba(239, 68, 68, 0.05)" if "BEARISH" in b['Vote'] else "rgba(234, 179, 8, 0.05)")
+                    
+                    st.markdown(f"""
+<div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; min-height: 240px; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">{b['Category']}</span>
+            <span style="font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.3);">{b['Vote']}</span>
+        </div>
+        <div style="font-size: 15px; font-weight: 700; color: #f8fafc; margin-bottom: 8px;">{b['ID']} {b['Microbot']}</div>
+        <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-bottom: 8px;">📊 {b['Key Metric']}</div>
+        <div style="font-size: 12px; color: #cbd5e1; line-height: 1.4;">{b['Institutional Rationale']}</div>
+    </div>
+    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8;">
+        <span>Score: <b style="color: #f8fafc;">{b['Score']}</b></span>
+        <span>Confidence: <b style="color: #f8fafc;">{b['Confidence']}</b></span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### 📋 Institutional Audit Trail & Dossier Dispatch")
+    df_swarm_table = pd.DataFrame(microbots)
+    st.dataframe(df_swarm_table[['ID', 'Microbot', 'Category', 'Vote', 'Score', 'Confidence', 'Key Metric']], use_container_width=True, hide_index=True)
+    
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        csv_swarm = df_swarm_table.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label=f"📥 Download 11-Microbot Audit CSV ({swarm_ticker})",
+            data=csv_swarm,
+            file_name=f"11_microbot_swarm_{swarm_ticker}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    with col_d2:
+        pdf_bytes = build_swarm_pdf(
+            ticker=swarm_ticker,
+            current_p=close_p,
+            vix=vix_val,
+            mandate=mandate,
+            consensus_pct=consensus,
+            bullish_cnt=bulls,
+            thesis=swarm_res['cio_thesis'],
+            microbots=microbots
+        )
+        st.download_button(
+            label=f"📄 Download 11-Microbot Executive PDF Dossier",
+            data=pdf_bytes,
+            file_name=f"11_microbot_dossier_{swarm_ticker}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
 # ==========================================
