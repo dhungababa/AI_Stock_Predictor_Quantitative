@@ -2,7 +2,7 @@
     content = f.read()
 
 target = '''                        <div style=\"background-color: rgba(0,0,0,0.4); padding: 15px; border-radius: 5px; text-align: left;\">
-                            <h4 style=\"margin-top:0px; color: #f8fafc;\">🧠 AI Reasoning (Why?):</h4>
+                            <h4 style=\"margin-top:0px; color: #f8fafc;\"> AI Reasoning (Why?):</h4>
                             <ul style=\"margin-bottom: 0px; color: #cbd5e1; font-size: 16px;\">
                                 <li><b>Trend:</b> Short-term momentum is <b>{'Stronger' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else 'Weaker'}</b> than the 30-day average.</li>
                                 <li><b>Value:</b> RSI is at {float(last_row['RSI'].iloc[0]):.1f} (<b>{'Oversold/Cheap' if float(last_row['RSI'].iloc[0]) < 45 else 'Overbought/Expensive' if float(last_row['RSI'].iloc[0]) > 60 else 'Neutral Momentum'}</b>).</li>
@@ -11,7 +11,7 @@ target = '''                        <div style=\"background-color: rgba(0,0,0,0.
                         </div>'''
 
 replacement = '''                        <div style=\"background-color: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; text-align: left; border: 1px solid #3b3f51;\">
-                            <h4 style=\"margin-top:0px; color: #00d084; font-size: 18px;\">⚡ Deep Quantum Analysis Engine</h4>
+                            <h4 style=\"margin-top:0px; color: #00d084; font-size: 18px;\"> Deep Quantum Analysis Engine</h4>
                             <p style=\"color: #94a3b8; font-size: 14px; margin-bottom: 15px;\">The XGBoost model calculated a <b>{confidence:.1f}%</b> probability of success by inter-connecting 18 technical indicators with real-time NLP news sentiment. Here are the 3 strongest drivers for this specific prediction:</p>
                             <ul style=\"margin-bottom: 0px; color: #f8fafc; font-size: 15px; line-height: 1.8;\">
                                 <li><b style=\"color: #cbd5e1;\">1. Price Momentum (SMA Cross):</b> The short-term 10-day moving average is mathematically <b>{'Stronger' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else 'Weaker'}</b> than the 30-day structural trend, signaling {'bullish' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else 'bearish'} trajectory.</li>

@@ -453,8 +453,8 @@ def cyber_terminal(content: str, title: str = "SYSTEM OUTPUT"):
 
 def neon_alert(message: str, alert_type: str = "info"):
     """Render a neon-glow alert box. Types: danger, success, warning, info."""
-    icons = {"danger": "🚨", "success": "✅", "warning": "⚠️", "info": "ℹ️"}
-    icon = icons.get(alert_type, "ℹ️")
+    icons = {"danger": "", "success": "", "warning": "", "info": "ℹ"}
+    icon = icons.get(alert_type, "ℹ")
     st.markdown(f"""
     <div class="neon-alert-{alert_type}">
         {icon} {message}

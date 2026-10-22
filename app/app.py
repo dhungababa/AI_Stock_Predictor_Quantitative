@@ -106,7 +106,7 @@ def build_swarm_pdf(ticker, current_p, vix, mandate, consensus_pct, bullish_cnt,
     pdf.set_font('Arial', size=8)
     for b in microbots:
         name = str(b.get('Microbot', '')).encode('latin-1', 'replace').decode('latin-1')
-        raw_vote = str(b.get('Raw_Vote', b.get('Vote', ''))).replace('🟢 ', '').replace('🔴 ', '').replace('🟡 ', '')
+        raw_vote = str(b.get('Raw_Vote', b.get('Vote', ''))).replace('🟢 ', '').replace(' ', '').replace('🟡 ', '')
         metric = str(b.get('Key Metric', '')).encode('latin-1', 'replace').decode('latin-1')
         rat = str(b.get('Institutional Rationale', '')).encode('latin-1', 'replace').decode('latin-1')
         cat = str(b.get('Category', '')).encode('latin-1', 'replace').decode('latin-1')
@@ -205,7 +205,7 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    ui_theme.glass_panel("🔒 Analyst Login")
+    ui_theme.glass_panel(" Analyst Login")
     pin = st.text_input("Enter Analyst PIN", type="password")
     if pin:
         if pin == "1234":
@@ -217,7 +217,7 @@ if not st.session_state.authenticated:
 
 # --- PARAMETER TUNING ---
 with st.sidebar:
-    ui_theme.glass_panel("⚙️ Tuning Parameters")
+    ui_theme.glass_panel(" Tuning Parameters")
     backtest_window = st.slider("Backtest Window (Days)", 7, 90, 30)
     conf_threshold = st.slider("Confidence Threshold", 50, 90, 60)
 
@@ -233,7 +233,7 @@ def load_lottieurl(url: str):
         return None
 
 # Main Header - Professional Text Only
-ui_theme.gradient_header("⚡ Quantum AI Stock Predictor", "Institutional-grade Stock Sentiment and Momentum Analysis Terminal")
+ui_theme.gradient_header(" Quantum AI Stock Predictor", "Institutional-grade Stock Sentiment and Momentum Analysis Terminal")
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 results_path = os.path.join(base_dir, "../models/comparative_results.csv")
@@ -271,7 +271,7 @@ def scan_nifty_basket():
                         
                         results.append({
                             "Ticker": ticker,
-                            "Signal": "🟢 BUY" if pred == 1 else "🔴 SELL",
+                            "Signal": "🟢 BUY" if pred == 1 else " SELL",
                             "Conviction": f"{conf:.1f}%",
                             "Raw_Conviction": conf,
                             "Raw_Pred": pred,
@@ -289,7 +289,7 @@ def scan_nifty_basket():
 # ==========================================
 # MULTI-ASSET RADAR & LIVE SCANNER TABS
 # ==========================================
-tab_single, tab_radar, tab_swarm = st.tabs(["🎯 SINGLE-STOCK DEEP DIVE", "⚡ NIFTY 50 MULTI-ASSET ALPHA RADAR", "🤖 11-MICROBOT QUANT COMMITTEE"])
+tab_single, tab_radar, tab_swarm = st.tabs([" SINGLE-STOCK DEEP DIVE", " NIFTY 50 MULTI-ASSET ALPHA RADAR", " 11-MICROBOT QUANT COMMITTEE"])
 
 with tab_single:
     st.markdown("### Select an Indian Stock to Scan Live")
@@ -344,28 +344,28 @@ with tab_single:
         <div style="flex: 1; height: 6px; background: #00ffcc; border-radius: 3px; box-shadow: 0 0 8px #00ffcc;" title="Stage 5 Dispatched"></div>
     </div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px;">
-        <span style="color: #10b981;">✓ Live NSE + RSS Stream</span>
-        <span style="color: #10b981;">✓ 18 Technical Indicators</span>
-        <span style="color: #10b981;">✓ FinBERT Sentiment Scored</span>
-        <span style="color: #10b981;">✓ XGBoost + Friction Modeled</span>
-        <span style="color: #00ffcc; font-weight: 700;">⚡ Research Dossier Ready</span>
+        <span style="color: #10b981;"> Live NSE + RSS Stream</span>
+        <span style="color: #10b981;"> 18 Technical Indicators</span>
+        <span style="color: #10b981;"> FinBERT Sentiment Scored</span>
+        <span style="color: #10b981;"> XGBoost + Friction Modeled</span>
+        <span style="color: #00ffcc; font-weight: 700;"> Research Dossier Ready</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
             st.markdown("#### Live Financial Data")
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                ui_theme.glass_metric(f"₹{hist['Close'].iloc[0]:.2f}", "Current Market Price", "💸")
+                ui_theme.glass_metric(f"₹{hist['Close'].iloc[0]:.2f}", "Current Market Price", "")
             with c2:
-                ui_theme.glass_metric(f"₹{hist['High'].iloc[0]:.2f}", "Highest Price Today", "🔼")
+                ui_theme.glass_metric(f"₹{hist['High'].iloc[0]:.2f}", "Highest Price Today", "")
             with c3:
-                ui_theme.glass_metric(f"₹{hist['Low'].iloc[0]:.2f}", "Lowest Price Today", "🔽")
+                ui_theme.glass_metric(f"₹{hist['Low'].iloc[0]:.2f}", "Lowest Price Today", "")
             with c4:
-                ui_theme.glass_metric(f"{hist['Volume'].iloc[0]:,}", "Total Shares Traded", "📊")
+                ui_theme.glass_metric(f"{hist['Volume'].iloc[0]:,}", "Total Shares Traded", "")
             st.markdown("<div style='text-align: right; color: #64748b; font-size: 11px; margin-top: 8px;'><i>* Live market data provided by Yahoo Finance API. Prices may experience slight delays or minor discrepancies compared to other providers.</i></div>", unsafe_allow_html=True)
             
             st.markdown("---")
-            st.markdown(f"### 🔮 AI FORECAST FOR TOMORROW ({live_ticker})")
+            st.markdown(f"###  AI FORECAST FOR TOMORROW ({live_ticker})")
             try:
                 cache_file = os.path.join(features_dir, f"{live_ticker}_features.csv")
                 model_path = os.path.join(models_dir, f"{live_ticker}_Combined.joblib")
@@ -401,7 +401,7 @@ with tab_single:
                             bg_color = "rgba(202, 138, 4, 0.1)"
                     else:
                         if confidence > 55:
-                            pred_text = "🔴 SELL NOW" if owns_stock else "🔴 DO NOT BUY"
+                            pred_text = " SELL NOW" if owns_stock else " DO NOT BUY"
                             pred_desc = "(AI PREDICTS DOWNTREND)"
                             pred_color = "#dc2626"
                             bg_color = "rgba(220, 38, 38, 0.1)"
@@ -433,7 +433,7 @@ with tab_single:
 </div>
 """, unsafe_allow_html=True)
                     ui_theme.ai_box(f"""
-<h4 style="margin-top:0px; color: #00d084; font-size: 18px;">⚡ Quantitative Algorithmic Drivers</h4>
+<h4 style="margin-top:0px; color: #00d084; font-size: 18px;"> Quantitative Algorithmic Drivers</h4>
 <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">The XGBoost quantitative model calculated a <b>{confidence:.1f}%</b> probability of success by inter-connecting 18 technical indicators with real-time NLP news sentiment. Key factors:</p>
 <ul style="margin-bottom: 0px; color: #f8fafc; font-size: 15px; line-height: 1.8;">
 <li><b style="color: #cbd5e1;">1. Price Momentum (SMA Cross):</b> The short-term 10-day moving average is mathematically <b>{'Stronger' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else 'Weaker'}</b> than the 30-day structural trend, signaling {'bullish' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else 'bearish'} trajectory.</li>
@@ -444,7 +444,7 @@ with tab_single:
 <span style="color: #94a3b8; font-size: 13px;"><i>All 18 parameters are actively visualized in the 'AI Brain' Donut Chart below.</i></span>
 </div>
 """, border_color="#00d084")
-                    st.markdown("#### 🤖 Chief Investment Officer (Agentic AI Summary)")
+                    st.markdown("####  Chief Investment Officer (Agentic AI Summary)")
                     with st.spinner("Agentic AI is formulating the executive summary..."):
                         try:
                             sentiment_text = 'Positive' if float(last_row['Sentiment_Score'].iloc[0]) > 0 else 'Negative' if float(last_row['Sentiment_Score'].iloc[0]) < 0 else 'Neutral'
@@ -452,7 +452,7 @@ with tab_single:
                             res = requests.post('http://localhost:11434/api/generate', json={"model": "llama3:latest", "prompt": prompt, "stream": False}, timeout=6)
                             res.raise_for_status()
                             summary = res.json().get('response', 'No response from model.')
-                            ui_theme.ai_box(f'<h4 style="margin-top: 0px; color: #8b5cf6;">🧠 Llama-3 Autonomous AI Advisor</h4><p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; margin-bottom: 0px;">"{summary}"</p>')
+                            ui_theme.ai_box(f'<h4 style="margin-top: 0px; color: #8b5cf6;"> Llama-3 Autonomous AI Advisor</h4><p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; margin-bottom: 0px;">"{summary}"</p>')
                         except Exception:
                             # Robust fallback when Ollama is offline or uninstalled
                             if pred == 1 and confidence > 55:
@@ -464,10 +464,10 @@ with tab_single:
                             else:
                                 summary = f"Technical indicators for {live_ticker} point towards a minor downside correction, but lack strong conviction. The AI advises remaining cautious and holding CASH until a clearer trend emerges."
                             
-                            ui_theme.ai_box(f'<h4 style="margin-top: 0px; color: #8b5cf6;">🧠 Quantitative Rule-Based Advisor (Offline Mode)</h4><p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; margin-bottom: 0px;">"{summary}"</p>')
+                            ui_theme.ai_box(f'<h4 style="margin-top: 0px; color: #8b5cf6;"> Quantitative Rule-Based Advisor (Offline Mode)</h4><p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; margin-bottom: 0px;">"{summary}"</p>')
                     
                     st.markdown("---")
-                    st.markdown(f"#### 📈 Strategy Backtesting Engine (Simulated {backtest_window}-Day Return)")
+                    st.markdown(f"####  Strategy Backtesting Engine (Simulated {backtest_window}-Day Return)")
                     try:
                         eval_window = df_cache.tail(backtest_window + 1).copy()
                         if len(eval_window) > 5:
@@ -552,13 +552,13 @@ with tab_single:
                         optimal_kelly_pct = 20.0
 
                     ui_theme.glass_metric_row([
-                        (net_str, f"Net Realized PnL (After Friction)", "💰"),
-                        (gross_str, "Gross Model Alpha (Pre-Fee)", "📈"),
-                        (f"{sharpe_ratio:.2f}", "Annualized Sharpe Ratio", "⚡"),
-                        (win_rate_str, "Algorithmic Win Rate", "🎯")
+                        (net_str, f"Net Realized PnL (After Friction)", ""),
+                        (gross_str, "Gross Model Alpha (Pre-Fee)", ""),
+                        (f"{sharpe_ratio:.2f}", "Annualized Sharpe Ratio", ""),
+                        (win_rate_str, "Algorithmic Win Rate", "")
                     ])
                     
-                    with st.expander("🏛️ Institutional Friction Engine & Risk Budgeting (Indian Market Reality)"):
+                    with st.expander(" Institutional Friction Engine & Risk Budgeting (Indian Market Reality)"):
                         st.markdown(f"""
                         <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 8px; padding: 15px; font-size: 13px;">
                             <b style="color: #00ffcc; font-size: 14px;">Institutional Execution Friction Analysis (Total Deductions: -₹{total_friction:,.2f})</b>
@@ -588,7 +588,7 @@ with tab_single:
 
                     # --- AUTONOMOUS RESEARCH DOSSIER & 1-CLICK DISPATCH ---
                     st.markdown("---")
-                    st.markdown("### 📑 AUTONOMOUS QUANTITATIVE RESEARCH DOSSIER")
+                    st.markdown("###  AUTONOMOUS QUANTITATIVE RESEARCH DOSSIER")
                     st.markdown("<p style='color: #94a3b8; font-size: 14px;'>End-to-end automated synthesis combining live market ingestion, FinBERT news sentiment, 18-factor quantitative logic, and institutional friction audit.</p>", unsafe_allow_html=True)
                     
                     target_p = float(hist['Close'].iloc[0] + (last_row['ATR'].iloc[0] * (confidence/100)) if pred==1 else hist['Close'].iloc[0] - (last_row['ATR'].iloc[0] * (confidence/100)))
@@ -662,7 +662,7 @@ with tab_single:
                     with c_pdf:
                         if pdf_bytes:
                             st.download_button(
-                                label=f"📥 DOWNLOAD RESEARCH DOSSIER (PDF)",
+                                label=f" DOWNLOAD RESEARCH DOSSIER (PDF)",
                                 data=pdf_bytes,
                                 file_name=f"Quant_Research_{live_ticker}.pdf",
                                 mime="application/pdf",
@@ -672,7 +672,7 @@ with tab_single:
                             st.button("PDF Generation Initializing...", disabled=True)
                     with c_md:
                         st.download_button(
-                            label=f"📄 EXPORT EXECUTIVE MEMO (MARKDOWN)",
+                            label=f" EXPORT EXECUTIVE MEMO (MARKDOWN)",
                             data=dossier_markdown.encode('utf-8'),
                             file_name=f"Quant_Memo_{live_ticker}.md",
                             mime="text/markdown",
@@ -729,7 +729,7 @@ with tab_single:
                 st.warning("No recent news found for this ticker right now.")
                 
             st.markdown("<br>", unsafe_allow_html=True)
-            with st.expander("🕰️ View Historical News Database (Last 60 Days)"):
+            with st.expander(" View Historical News Database (Last 60 Days)"):
                 try:
                     hist_news_path = os.path.join(base_dir, f"../data/raw/news/{live_ticker}_news.csv")
                     if os.path.exists(hist_news_path):
@@ -800,7 +800,7 @@ with tab_single:
                 st.warning(f"Minor error: {e}")
 
 with tab_radar:
-    ui_theme.glass_panel("⚡ NIFTY 50 MULTI-ASSET ALPHA RADAR")
+    ui_theme.glass_panel(" NIFTY 50 MULTI-ASSET ALPHA RADAR")
     st.markdown("<p style='color: #94a3b8; font-size: 14px; margin-bottom: 20px;'>Simultaneously evaluates all 22 trained premier Indian equities across 18 momentum, valuation, and news sentiment factors. Automatically ranks assets by algorithmic conviction and Kelly capital allocation.</p>", unsafe_allow_html=True)
     
     with st.spinner("Executing multi-asset quantitative inference across Nifty 50 universe..."):
@@ -820,17 +820,17 @@ with tab_radar:
         with c_r1:
             ui_theme.glass_metric(top_long, "Top Long Alpha Pick", "🟢")
         with c_r2:
-            ui_theme.glass_metric(top_short, "Top Hedge / Short Pick", "🔴")
+            ui_theme.glass_metric(top_short, "Top Hedge / Short Pick", "")
         with c_r3:
-            ui_theme.glass_metric(f"{len(df_sorted)} Assets ({avg_conviction} Avg)", "Portfolio Universe Scanned", "📊")
+            ui_theme.glass_metric(f"{len(df_sorted)} Assets ({avg_conviction} Avg)", "Portfolio Universe Scanned", "")
             
-        st.markdown("#### 🏆 Quantitative Alpha Leaderboard")
+        st.markdown("####  Quantitative Alpha Leaderboard")
         display_cols = ["Ticker", "Signal", "Conviction", "Last Price", "Target Price", "Stop Loss", "RSI (14)", "Kelly Weight", "Allocation (₹1L)"]
         st.dataframe(df_sorted[display_cols], use_container_width=True, hide_index=True)
         
         csv_radar = df_sorted[display_cols].to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 EXPORT MULTI-ASSET ALLOCATION BASKET (CSV)",
+            label=" EXPORT MULTI-ASSET ALLOCATION BASKET (CSV)",
             data=csv_radar,
             file_name=f"Nifty50_Quant_Basket_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv",
@@ -844,7 +844,7 @@ with tab_radar:
 # ==========================================
 if True:
     st.markdown("---")
-    st.markdown("### 📊 How does this AI work? (Under the Hood)")
+    st.markdown("###  How does this AI work? (Under the Hood)")
     st.markdown("This section explains **exactly** how the Artificial Intelligence makes its decisions.")
     
     if os.path.exists(results_path):
@@ -968,15 +968,15 @@ if True:
 # 11-MICROBOT QUANT TRADING COMMITTEE TAB
 # ==========================================
 with tab_swarm:
-    ui_theme.glass_panel("🤖 11-MICROBOT QUANT TRADING COMMITTEE")
+    ui_theme.glass_panel(" 11-MICROBOT QUANT TRADING COMMITTEE")
     st.markdown("<p style='color: #94a3b8; font-size: 14px; margin-bottom: 20px;'>Institutional multi-agent quantitative swarm inspired by autonomous trading agent architectures. 11 specialized microbots independently inspect market microstructure, macro catalysts, technical momentum, stat-arb mean reversion, FinBERT news sentiment, fundamental health, volatility regimes, execution frictions, and Kelly risk before voting on an institutional trade mandate.</p>", unsafe_allow_html=True)
     
     col_sel1, col_sel2 = st.columns([2, 1])
     with col_sel1:
-        swarm_ticker = st.selectbox("🎯 Select Nifty 50 Target for Swarm Analysis:", sorted(available_tickers), key="swarm_ticker_select")
+        swarm_ticker = st.selectbox(" Select Nifty 50 Target for Swarm Analysis:", sorted(available_tickers), key="swarm_ticker_select")
     with col_sel2:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        run_swarm_btn = st.button("🚀 Re-Run 11-Microbot Swarm", use_container_width=True)
+        run_swarm_btn = st.button(" Re-Run 11-Microbot Swarm", use_container_width=True)
 
     with st.spinner(f"Ingesting real-time NSE feeds and deploying 11 Microbots on {swarm_ticker}..."):
         try:
@@ -1038,7 +1038,7 @@ with tab_swarm:
         <div style="text-align: right; min-width: 200px;">
             <div style="font-size: 12px; color: #94a3b8; font-weight: 600;">COMMITTEE CONSENSUS</div>
             <div style="font-size: 32px; font-weight: 900; color: {mandate_color};">{consensus:.0f}%</div>
-            <div style="font-size: 12px; color: #94a3b8;">🟢 {bulls} Bulls &nbsp;|&nbsp; 🔴 {bears} Bears &nbsp;|&nbsp; 🟡 {neutrals} Neutral</div>
+            <div style="font-size: 12px; color: #94a3b8;">🟢 {bulls} Bulls &nbsp;|&nbsp;  {bears} Bears &nbsp;|&nbsp; 🟡 {neutrals} Neutral</div>
         </div>
     </div>
 </div>
@@ -1047,16 +1047,16 @@ with tab_swarm:
     # 2. KEY MACRO & MARKET METRICS
     m1, m2, m3, m4 = st.columns(4)
     with m1:
-        ui_theme.glass_metric(f"₹{close_p:,.2f}", "Current Price (NSE)", "📈")
+        ui_theme.glass_metric(f"₹{close_p:,.2f}", "Current Price (NSE)", "")
     with m2:
-        ui_theme.glass_metric(f"{vix_val:.2f}", "India VIX (Live)", "⚡")
+        ui_theme.glass_metric(f"{vix_val:.2f}", "India VIX (Live)", "")
     with m3:
-        ui_theme.glass_metric(f"{m_prob*100:.1f}%", "XGBoost Alpha Prob", "🤖")
+        ui_theme.glass_metric(f"{m_prob*100:.1f}%", "XGBoost Alpha Prob", "")
     with m4:
-        ui_theme.glass_metric(f"{bulls}/10", "Committee Approval", "🏛️")
+        ui_theme.glass_metric(f"{bulls}/10", "Committee Approval", "")
 
     st.markdown("---")
-    st.markdown("### 🏛️ THE 11 SPECIALIZED MICROBOT VERDICTS")
+    st.markdown("###  THE 11 SPECIALIZED MICROBOT VERDICTS")
     st.markdown("<p style='color: #94a3b8; font-size: 13px;'>Each microbot analyzes an independent quantitative domain using real price, volume, volatility, news, and tax friction metrics:</p>", unsafe_allow_html=True)
     
     microbots = swarm_res['microbots']
@@ -1078,7 +1078,7 @@ with tab_swarm:
             <span style="font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.3);">{b['Vote']}</span>
         </div>
         <div style="font-size: 15px; font-weight: 700; color: #f8fafc; margin-bottom: 8px;">{b['ID']} {b['Microbot']}</div>
-        <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-bottom: 8px;">📊 {b['Key Metric']}</div>
+        <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-bottom: 8px;"> {b['Key Metric']}</div>
         <div style="font-size: 12px; color: #cbd5e1; line-height: 1.4;">{b['Institutional Rationale']}</div>
     </div>
     <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8;">
@@ -1089,7 +1089,7 @@ with tab_swarm:
 """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### 📋 Institutional Audit Trail & Dossier Dispatch")
+    st.markdown("###  Institutional Audit Trail & Dossier Dispatch")
     df_swarm_table = pd.DataFrame(microbots)
     st.dataframe(df_swarm_table[['ID', 'Microbot', 'Category', 'Vote', 'Score', 'Confidence', 'Key Metric']], use_container_width=True, hide_index=True)
     
@@ -1097,7 +1097,7 @@ with tab_swarm:
     with col_d1:
         csv_swarm = df_swarm_table.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label=f"📥 Download 11-Microbot Audit CSV ({swarm_ticker})",
+            label=f" Download 11-Microbot Audit CSV ({swarm_ticker})",
             data=csv_swarm,
             file_name=f"11_microbot_swarm_{swarm_ticker}.csv",
             mime="text/csv",
@@ -1115,7 +1115,7 @@ with tab_swarm:
             microbots=microbots
         )
         st.download_button(
-            label=f"📄 Download 11-Microbot Executive PDF Dossier",
+            label=f" Download 11-Microbot Executive PDF Dossier",
             data=pdf_bytes,
             file_name=f"11_microbot_dossier_{swarm_ticker}.pdf",
             mime="application/pdf",
