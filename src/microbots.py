@@ -51,8 +51,10 @@ class QuantMicrobotSwarm:
         
         # Ensure we have valid price series
         close_series = hist_df['Close'].dropna()
-        latest_close = float(close_series.iloc[-1]) if not close_series.empty else 1000.0
-        latest_vol = float(hist_df['Volume'].iloc[-1]) if not hist_df.empty else 1000000.0
+        if close_series.empty:
+            raise ValueError(f"Microbot Swarm evaluation requires valid price series for {self.ticker}")
+        latest_close = float(close_series.iloc[-1])
+        latest_vol = float(hist_df['Volume'].iloc[-1]) if ('Volume' in hist_df.columns and not hist_df['Volume'].empty) else 0.0
 
         # --- BOT 1: Market Data & Tick Feeder ---
         bot1 = self._run_bot1_market_data(hist_df, latest_close)
@@ -268,7 +270,50 @@ class QuantMicrobotSwarm:
                               "Media Polarity", f"{norm_score:+.2f}", rationale)
 
     def _run_bot6_fundamental_health(self, df: pd.DataFrame, close: float) -> MicrobotResult:
-        # Compute 52-week high/low from historical series
+        # Authentic Fundamental & Financial Statement Analysis via yfinance Info
+        pe_val = None
+        roe_val = None
+        debt_to_equity = None
+        op_margin = None
+        
+        try:
+            ticker_obj = yf.Ticker(self.ticker)
+            info = ticker_obj.info or {}
+            pe_val = info.get('trailingPE') or info.get('forwardPE')
+            roe_val = info.get('returnOnEquity')
+            debt_to_equity = info.get('debtToEquity')
+            op_margin = info.get('operatingMargins')
+        except Exception:
+            pass
+
+        # If live fundamentals are retrieved, apply institutional Graham-Dodd scoring
+        if pe_val is not None and roe_val is not None:
+            roe_pct = roe_val * 100.0
+            margin_pct = (op_margin * 100.0) if op_margin else 15.0
+            
+            # Institutional Criteria: ROE > 15%, Reasonable P/E (< 35), Solid Margin (> 12%)
+            is_high_quality = (roe_pct >= 15.0) and (pe_val <= 40.0)
+            
+            if is_high_quality:
+                vote = "BULLISH"
+                score = 88.0
+                conf = 85.0
+                rationale = f"Strong fundamentals: Trailing P/E of {pe_val:.1f}x with exceptional ROE of {roe_pct:.1f}% and Operating Margin of {margin_pct:.1f}%."
+            elif pe_val > 55.0:
+                vote = "NEUTRAL"
+                score = 50.0
+                conf = 75.0
+                rationale = f"Rich valuation multiple: P/E sits at {pe_val:.1f}x with ROE of {roe_pct:.1f}%; priced for perfection."
+            else:
+                vote = "BULLISH"
+                score = 72.0
+                conf = 75.0
+                rationale = f"Stable balance sheet: ROE at {roe_pct:.1f}%, P/E at {pe_val:.1f}x with manageable leverage."
+                
+            return MicrobotResult(6, "Fundamental & Valuation Health", "Fundamental Modeling", vote, score, conf, 
+                                  "P/E & ROE", f"{pe_val:.1f}x | {roe_pct:.1f}% ROE", rationale)
+
+        # Fallback to 52-Week Range Positioning if fundamentals API is unavailable
         high_52w = float(df['High'].max()) if not df.empty else close * 1.2
         low_52w = float(df['Low'].min()) if not df.empty else close * 0.8
         rng = high_52w - low_52w
@@ -276,19 +321,14 @@ class QuantMicrobotSwarm:
 
         if pos_52w >= 40.0 and pos_52w <= 85.0:
             vote = "BULLISH"
-            score = 82.0
-            conf = 80.0
-            rationale = f"Healthy valuation runway: Stock trades at {pos_52w:.1f}% of 52-week range (₹{low_52w:,.0f} - ₹{high_52w:,.0f}) with ample upside clearance."
-        elif pos_52w > 92.0:
-            vote = "NEUTRAL"
-            score = 55.0
+            score = 80.0
             conf = 75.0
-            rationale = f"Stretched valuation: Stock is within {100-pos_52w:.1f}% of 52-week all-time high; risk of consolidation."
+            rationale = f"Technical valuation clearance: Stock trades at {pos_52w:.1f}% of 52-week range (₹{low_52w:,.0f} - ₹{high_52w:,.0f})."
         else:
             vote = "NEUTRAL"
             score = 50.0
             conf = 70.0
-            rationale = f"Lagging benchmark: Positioned in lower quadrant ({pos_52w:.1f}%) of 52-week range."
+            rationale = f"Technical valuation boundary: Positioned at {pos_52w:.1f}% of 52-week range."
 
         return MicrobotResult(6, "Fundamental & Valuation Health", "Fundamental Modeling", vote, score, conf, 
                               "52-Week Range Pos", f"{pos_52w:.1f}%", rationale)

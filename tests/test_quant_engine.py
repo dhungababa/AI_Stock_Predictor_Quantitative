@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import pytest
 import os
 import joblib
@@ -151,3 +154,113 @@ def test_11_microbot_swarm_execution():
         assert b["Raw_Vote"] in ["BULLISH", "BEARISH", "NEUTRAL"]
         assert "Key Metric" in b
         assert len(b["Institutional Rationale"]) > 10
+
+def test_simulate_l2_order_book_microstructure():
+    """Verify L2 order book simulation adheres to 10-level NSE microstructure."""
+    from app.market_depth import simulate_l2_order_book, calculate_execution_slippage
+    
+    price = 1250.0
+    atr = 25.0
+    book = simulate_l2_order_book(current_price=price, atr=atr, spread_bps=2.5)
+    
+    assert book["levels"] == 10
+    assert len(book["bids"]) == 10
+    assert len(book["asks"]) == 10
+    assert book["best_ask"] > book["best_bid"]
+    assert book["spread"] > 0
+    assert book["spread_paise"] == round(book["spread"] * 100, 1)
+    assert book["spread_bps"] > 0
+    assert book["vwap"] > 0
+    assert book["total_bid_vol"] > 0
+    assert book["total_ask_vol"] > 0
+    assert -100.0 <= book["bid_ask_imbalance"] <= 100.0
+
+    # Verify descending bid prices and ascending ask prices
+    for i in range(len(book["bids"]) - 1):
+        assert book["bids"][i]["price"] >= book["bids"][i + 1]["price"]
+        assert book["bids"][i]["cum_quantity"] < book["bids"][i + 1]["cum_quantity"]
+
+    for i in range(len(book["asks"]) - 1):
+        assert book["asks"][i]["price"] <= book["asks"][i + 1]["price"]
+        assert book["asks"][i]["cum_quantity"] < book["asks"][i + 1]["cum_quantity"]
+
+    # Verify tick constraint (multiples of 0.05)
+    for b in book["bids"]:
+        assert abs(round(b["price"] / 0.05) * 0.05 - b["price"]) < 1e-4
+    for a in book["asks"]:
+        assert abs(round(a["price"] / 0.05) * 0.05 - a["price"]) < 1e-4
+
+
+def test_l2_execution_slippage_and_friction():
+    """Verify order execution slippage walks the order ladder with friction audit."""
+    from app.market_depth import simulate_l2_order_book, calculate_execution_slippage
+
+    price = 1250.0
+    atr = 25.0
+    book = simulate_l2_order_book(current_price=price, atr=atr, spread_bps=2.5)
+
+    # Small order (500 shares)
+    res_small = calculate_execution_slippage(book, order_qty=500, side="BUY", atr=atr)
+    assert res_small["order_qty"] == 500
+    assert res_small["exec_vwap"] >= book["best_ask"]
+    assert res_small["slippage_bps"] >= 0.0
+    assert res_small["stt"] > 0
+    assert res_small["brokerage"] == 20.0
+    assert res_small["total_friction"] > 0
+
+    # Large order (10,000 shares) should have higher or equal slippage bps
+    res_large = calculate_execution_slippage(book, order_qty=10000, side="BUY", atr=atr)
+    assert res_large["slippage_bps"] >= res_small["slippage_bps"]
+
+    # Sell order execution
+    res_sell = calculate_execution_slippage(book, order_qty=1500, side="SELL", atr=atr)
+    assert res_sell["exec_vwap"] <= book["best_bid"]
+    assert res_sell["slippage_inr"] >= 0.0
+
+
+def test_monte_carlo_gbm_simulation_and_var():
+    """Verify 1,000-path Geometric Brownian Motion simulation, VaR, and stress scenarios."""
+    from app.monte_carlo_var import run_monte_carlo_simulation
+
+    # 100 days of synthetic price data
+    np.random.seed(42)
+    daily_rets = np.random.normal(0.0005, 0.015, 120)
+    prices = 1000.0 * np.exp(np.cumsum(daily_rets))
+    df_hist = pd.DataFrame({"Close": prices})
+
+    mc = run_monte_carlo_simulation(current_price=1000.0, hist_df=df_hist, days=30, num_sims=1000)
+
+    assert mc["days"] == 30
+    assert mc["num_sims"] == 1000
+    assert mc["price_paths"].shape == (1000, 31)
+    assert mc["sample_paths"].shape == (50, 31)
+    assert mc["portfolio_base"] == 500000.0
+
+    # VaR and CVaR sanity
+    assert mc["var_95_hist"] > 0
+    assert mc["var_99_hist"] >= mc["var_95_hist"]
+    assert mc["cvar_95"] >= mc["var_95_hist"]
+    assert mc["cvar_99"] >= mc["var_99_hist"]
+    assert mc["var_95_param"] > 0
+    assert mc["var_99_param"] >= mc["var_95_param"]
+
+    # Probability bounds
+    assert 0.0 <= mc["prob_profit"] <= 100.0
+    assert 0.0 <= mc["prob_loss_gt_10pct"] <= 100.0
+
+    # Stress test scenarios
+    assert len(mc["stress_scenarios"]) == 5
+    scenario_ids = [s["id"] for s in mc["stress_scenarios"]]
+    assert "lehman_2008" in scenario_ids
+    assert "covid_2020" in scenario_ids
+    assert "demonet_2016" in scenario_ids
+
+    # Lehman: -25% on 5 Lakhs = Rs 1,25,000 loss
+    lehman = next(s for s in mc["stress_scenarios"] if s["id"] == "lehman_2008")
+    assert lehman["loss_inr"] == 125000.0
+    assert lehman["stressed_val"] == 375000.0
+
+    # COVID: -35% on 5 Lakhs = Rs 1,75,000 loss
+    covid = next(s for s in mc["stress_scenarios"] if s["id"] == "covid_2020")
+    assert covid["loss_inr"] == 175000.0
+    assert covid["stressed_val"] == 325000.0
