@@ -1,7 +1,7 @@
 """
-market_depth.py — Level-2 Market Depth, Order Book Ladder & Slippage Engine
-Institutional quantitative module for NSE order book simulation, depth visualization,
-real-time VWAP calculation, and market impact analysis.
+market_depth.py — Synthetic 10-Level Order Book Liquidity & Slippage Simulator
+Heuristic quantitative module estimating depth ladders, VWAP execution impact,
+and slippage costs around spot NSE prices (real L2 tick feeds require colocation).
 """
 
 import math

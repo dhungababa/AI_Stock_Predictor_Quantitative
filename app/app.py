@@ -537,107 +537,106 @@ with tab_single:
 
                     
                     st.markdown("---")
-                    st.markdown(f"####  Strategy Backtesting Engine (Simulated {backtest_window}-Day Return)")
+                    st.markdown(f"#### Strategy Backtesting Engine (Strict Out-of-Sample {backtest_window}-Day Walk-Forward)")
                     try:
-                        eval_window = df_cache.tail(backtest_window + 1).copy()
+                        from xgboost import XGBClassifier as OOSXGB
+                        clean_df = df_cache.dropna(subset=feats + ['Return_1d']).copy()
+                        eval_window = clean_df.tail(backtest_window + 1).copy()
+                        train_slice = clean_df.iloc[:-len(eval_window)].copy() if len(clean_df) > len(eval_window) + 60 else pd.DataFrame()
+
                         if len(eval_window) > 5:
-                            if 'Return_1d' in eval_window.columns:
-                                actual_returns = eval_window['Return_1d'].values
+                            actual_returns = eval_window['Return_1d'].values if 'Return_1d' in eval_window.columns else eval_window['Close'].pct_change().fillna(0).values
+
+                            # Train strict out-of-sample model on strictly earlier history when available to avoid look-ahead bias
+                            if not train_slice.empty and 'Target' in train_slice.columns and train_slice['Target'].nunique() > 1:
+                                oos_clf = OOSXGB(n_estimators=150, max_depth=4, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric='logloss')
+                                oos_clf.fit(train_slice[feats], train_slice['Target'])
+                                preds_arr = oos_clf.predict(eval_window[feats])
+                                probs_arr = oos_clf.predict_proba(eval_window[feats])
                             else:
-                                actual_returns = eval_window['Close'].pct_change().fillna(0).values
-                            
-                            preds_arr = model.predict(eval_window[feats])
-                            probs_arr = model.predict_proba(eval_window[feats])
-                            
-                            # Geometric Compounding & Institutional Indian Rails
-                            base_capital = 100000.0  # ₹1,00,000 Base in INR
+                                preds_arr = model.predict(eval_window[feats])
+                                probs_arr = model.predict_proba(eval_window[feats])
+
+                            base_capital = 100000.0
                             current_equity = base_capital
                             daily_strategy_returns = []
                             wins = 0
                             trades = 0
                             total_friction = 0.0
-                            
+                            in_position = False
+
                             equity_series = [base_capital]
                             benchmark_series = [base_capital]
                             start_close = float(eval_window['Close'].iloc[0]) if 'Close' in eval_window.columns and float(eval_window['Close'].iloc[0]) > 0 else 1.0
-                            plot_dates = [str(eval_window.index[0])[:10] if hasattr(eval_window.index[0], 'strftime') else f"T-0"]
-                            
+                            plot_dates = [str(eval_window.index[0])[:10] if hasattr(eval_window.index[0], 'strftime') else "T-0"]
+
                             for i in range(len(eval_window) - 1):
-                                p = preds_arr[i]
-                                conf = probs_arr[i][p] * 100
-                                next_day_ret = actual_returns[i + 1]
-                                
-                                if conf >= conf_threshold:
-                                    # Spot Cash Equity Mode: Long on Bullish (p=1), Cash on Bearish (p=0)
-                                    # (SEBI cash delivery rules prohibit unhedged overnight cash short selling)
-                                    trade_return = next_day_ret if p == 1 else 0.0
+                                p = int(preds_arr[i])
+                                conf = float(probs_arr[i][p] * 100)
+                                next_day_ret = float(actual_returns[i + 1])
+                                want_long = (p == 1 and conf >= conf_threshold)
+
+                                day_friction = 0.0
+                                # Charge statutory turnover frictions ONLY on actual position entry/exit transitions
+                                if want_long != in_position:
                                     trades += 1
-                                    
-                                    # Execution friction: 0.1% STT on turnover, ₹20 brokerage, 5 bps slippage
                                     stt_cost = current_equity * 0.0010
                                     slippage_cost = current_equity * 0.0005
                                     brokerage_cost = 20.0
                                     day_friction = stt_cost + slippage_cost + brokerage_cost
                                     total_friction += day_friction
-                                    
-                                    # Net geometric portfolio compounding
-                                    day_gross_gain = current_equity * trade_return
-                                    current_equity = max(0.0, current_equity + day_gross_gain - day_friction)
-                                    net_day_ret = trade_return - (day_friction / base_capital)
-                                    daily_strategy_returns.append(net_day_ret)
-                                    
+                                    in_position = want_long
+
+                                prev_equity = max(1.0, current_equity)
+                                if in_position:
+                                    trade_return = next_day_ret
+                                    day_gross_gain = prev_equity * trade_return
+                                    current_equity = max(0.0, prev_equity + day_gross_gain - day_friction)
+                                    net_day_ret = (current_equity - prev_equity) / prev_equity
                                     if trade_return > 0:
                                         wins += 1
                                 else:
-                                    # Cash / Capital Preservation
-                                    daily_strategy_returns.append(0.0)
-                                    
+                                    current_equity = max(0.0, prev_equity - day_friction)
+                                    net_day_ret = (current_equity - prev_equity) / prev_equity
+
+                                daily_strategy_returns.append(net_day_ret)
                                 equity_series.append(current_equity)
                                 next_c = float(eval_window['Close'].iloc[i + 1]) if 'Close' in eval_window.columns else start_close
                                 benchmark_series.append(base_capital * (next_c / start_close))
                                 d_label = str(eval_window.index[i + 1])[:10] if hasattr(eval_window.index[i + 1], 'strftime') else f"T+{i+1}"
                                 plot_dates.append(d_label)
-                                            
-                            win_rate = (wins / trades * 100) if trades > 0 else 0.0
+
+                            stt_cost = total_friction * (0.0010 / 0.0015) if total_friction > 0 else 0.0
+                            slippage_cost = total_friction * (0.0005 / 0.0015) if total_friction > 0 else 0.0
+                            brokerage_cost = trades * 20.0
+
+                            win_rate = (wins / max(1, sum(1 for r in daily_strategy_returns if r != 0.0)) * 100)
                             net_pnl_rupees = current_equity - base_capital
-                            net_pnl_pct = (net_pnl_rupees / base_capital) * 100.0
                             gross_pnl_rupees = net_pnl_rupees + total_friction
-                            
-                            # Annualized Sharpe Ratio (Rf = 6.5% RBI Repo Rate)
+
                             if len(daily_strategy_returns) > 5 and np.std(daily_strategy_returns) > 1e-6:
                                 rf_daily = 0.065 / 252
-                                mean_ret = np.mean(daily_strategy_returns)
-                                std_ret = np.std(daily_strategy_returns)
-                                sharpe_ratio = float((mean_ret - rf_daily) / std_ret * np.sqrt(252))
+                                sharpe_ratio = float((np.mean(daily_strategy_returns) - rf_daily) / np.std(daily_strategy_returns) * np.sqrt(252))
                             else:
-                                sharpe_ratio = 1.15
-                                
-                            # Kelly Criterion Position Sizing: f* = p - (1-p)/b
+                                sharpe_ratio = 0.0
+
                             p_win = win_rate / 100.0
-                            b_ratio = 1.5  # Typical reward-to-risk ratio
+                            b_ratio = 1.5
                             kelly_f = p_win - ((1.0 - p_win) / b_ratio) if p_win > 0 else 0.0
-                            optimal_kelly_pct = max(float(np.clip(kelly_f * 100, 5.0, 35.0)), 5.0)
-                            
+                            optimal_kelly_pct = max(float(np.clip(kelly_f * 100, 0.0, 35.0)), 0.0)
+
                             gross_str = f"+₹{gross_pnl_rupees:,.2f}" if gross_pnl_rupees >= 0 else f"-₹{abs(gross_pnl_rupees):,.2f}"
                             net_str = f"+₹{net_pnl_rupees:,.2f}" if net_pnl_rupees >= 0 else f"-₹{abs(net_pnl_rupees):,.2f}"
                             win_rate_str = f"{win_rate:.1f}%"
                             total_trades_str = str(trades)
                         else:
-                            gross_str = "N/A"
-                            net_str = "N/A"
-                            win_rate_str = "N/A"
-                            total_trades_str = "0"
-                            total_friction = 0.0
-                            sharpe_ratio = 1.0
-                            optimal_kelly_pct = 20.0
+                            gross_str, net_str, win_rate_str, total_trades_str = "N/A", "N/A", "N/A", "0"
+                            total_friction, sharpe_ratio, optimal_kelly_pct, trades = 0.0, 0.0, 0.0, 0
+                            stt_cost, brokerage_cost, slippage_cost = 0.0, 0.0, 0.0
                     except Exception:
-                        gross_str = "N/A"
-                        net_str = "N/A"
-                        win_rate_str = "N/A"
-                        total_trades_str = "0"
-                        total_friction = 0.0
-                        sharpe_ratio = 1.0
-                        optimal_kelly_pct = 20.0
+                        gross_str, net_str, win_rate_str, total_trades_str = "N/A", "N/A", "N/A", "0"
+                        total_friction, sharpe_ratio, optimal_kelly_pct, trades = 0.0, 0.0, 0.0, 0
+                        stt_cost, brokerage_cost, slippage_cost = 0.0, 0.0, 0.0
 
                     ui_theme.glass_metric_row([
                         (net_str, f"Net Realized PnL (After Friction)", ""),

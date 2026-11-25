@@ -34,7 +34,7 @@ class MicrobotResult:
 
 class QuantMicrobotSwarm:
     """
-    11-Microbot Quantitative Multi-Agent Committee for Indian Equities (NSE/Nifty 50).
+    11-Factor Deterministic Quantitative Scoring Committee for Indian Equities (NSE/Nifty 50).
     Performs real-time multi-dimensional vetting before capital commitment.
     """
     def __init__(self, ticker: str):

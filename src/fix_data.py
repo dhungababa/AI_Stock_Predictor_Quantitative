@@ -1,4 +1,4 @@
-﻿import re
+import re
 with open('data.py', 'r', encoding='utf-8') as f:
     content = f.read()
 

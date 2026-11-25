@@ -6,6 +6,7 @@ transformers
 scikit-learn
 ta
 streamlit
+streamlit-lottie
 matplotlib
 plotly
 xgboost
@@ -15,3 +16,6 @@ joblib
 nest_asyncio
 aiohttp
 fpdf
+tqdm
+ollama
+google-genai
