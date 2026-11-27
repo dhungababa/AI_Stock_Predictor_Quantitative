@@ -33,7 +33,7 @@ def analyze_technical_indicators(ctx: dict) -> str:
     sma50 = ind.get("SMA_50", price)
     sma200 = ind.get("SMA_200", price)
     stoch_k = ind.get("Stoch_K", 50.0)
-    adx = ind.get("ADX", 25.0)
+    adx = ind.get("ADX")
 
     if rsi >= 70:
         rsi_state = f"**Overbought** ({rsi:.1f}) — momentum is stretched, watch for mean-reversion pullbacks."
@@ -62,7 +62,7 @@ def analyze_technical_indicators(ctx: dict) -> str:
 | **Trend Alignment** | Price vs EMA20 / SMA50 | **{trend_state}** (EMA20: ₹{ema20:,.2f}, SMA50: ₹{sma50:,.2f}) |
 | **Bollinger Bands (20, 2)** | Bandwidth: `{bb_width:.2f}%` | {bb_pos} (Upper: ₹{bb_upper:,.2f}, Lower: ₹{bb_lower:,.2f}) |
 | **Stochastic Oscillator (%K)** | `{stoch_k:.1f}` | {'Overbought' if stoch_k > 80 else ('Oversold' if stoch_k < 20 else 'Neutral range')} |
-| **ADX (Trend Strength)** | `{adx:.1f}` | {'Strong Trending Regime (>25)' if adx >= 25 else 'Rangebound / Low Momentum (<25)'} |
+| **ADX (Trend Strength)** | `{f'{adx:.1f}' if adx is not None else 'N/A (not in 18-factor schema)'}` | {('Strong Trending Regime (>25)' if adx >= 25 else 'Rangebound / Low Momentum (<25)') if adx is not None else 'Volatility tracked via ATR(14) & Bollinger Width'} |
 
 **Tactical Summary:** The asset is exhibiting **{trend_state.lower()}** behavior with daily volatility of ₹{atr:.2f} per share. Momentum is governed by {rsi_state.split('—')[0].strip()}."""
 
@@ -178,10 +178,16 @@ def explain_graham_valuation(ctx: dict) -> str:
     """Explains Benjamin Graham intrinsic value, Graham number, and margin of safety."""
     ticker = ctx.get("ticker", "Stock")
     price = ctx.get("price", 1000.0)
-    graham = ctx.get("graham", {})
-    
-    pe = graham.get("pe_ratio", 22.4)
-    pb = graham.get("pb_ratio", 2.8)
+    graham = ctx.get("graham") or {}
+    if not graham or "pe_ratio" not in graham or "pb_ratio" not in graham:
+        return (
+            f"### 🏛️ Benjamin Graham Fundamental Valuation for **{ticker}**\n\n"
+            f"Live fundamental multiples (Trailing P/E and Price-to-Book) are not loaded in the current telemetry snapshot "
+            f"for **{ticker}** (CMP: `₹{price:,.2f}`). Avoid synthetic defaults—fetch fundamental filings via the SEC/EDGAR RAG engine "
+            f"or Yahoo Finance fundamentals panel before computing Graham Number ($\\sqrt{{22.5 \\times \\text{{EPS}} \\times \\text{{BVPS}}}}$)."
+        )
+    pe = graham["pe_ratio"]
+    pb = graham["pb_ratio"]
     eps = graham.get("eps", price / pe if pe > 0 else 45.0)
     bvps = graham.get("bvps", price / pb if pb > 0 else 350.0)
     
@@ -231,7 +237,7 @@ def explain_trade_thesis(ctx: dict) -> str:
 
 #### 🛡️ Quantitative Risk Controls:
 * **Lookahead Bias Defense:** Features are computed strictly on lagged $t-1$ prices.
-* **Purged Cross-Validation:** Combinatorial purged cross-validation (CPCV) eliminates serial correlation leakage.
+* **Walk-Forward TimeSeriesSplit:** 5-fold expanding-window `TimeSeriesSplit` ensures strict out-of-sample evaluation with zero future leakage.
 * **Execution Rule:** Use Limit orders to prevent slippage beyond the 5 bps hurdle rate."""
 
 # =========================================================================
@@ -303,8 +309,8 @@ Provide an institutional, precise, and actionable response with exact numbers, f
 
 1. **Zero Lookahead Bias:**
    * Features ($SMA_t, RSI_t, Return_{t-1}$) are strictly computed on lagged information available before market open ($t-1$).
-2. **Purged Combinatorial Cross-Validation:**
-   * Standard K-Fold CV fails in time-series due to serial auto-correlation. We apply Marcos López de Prado's **Purged & Embargoed Cross-Validation**.
+2. **Expanding-Window TimeSeriesSplit Validation:**
+   * Standard K-Fold CV leaks future bars in time-series. We enforce `sklearn.model_selection.TimeSeriesSplit(n_splits=5)` + walk-forward out-of-sample backtests.
 3. **Survivorship Bias Protection:**
    * Historical models are calibrated against all active and historically de-listed constituents in the Nifty 50 index."""
     else:

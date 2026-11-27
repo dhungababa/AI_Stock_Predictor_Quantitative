@@ -203,11 +203,13 @@ ui_theme.inject_theme()
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+_ANALYST_PIN = os.environ.get("ANALYST_PIN", "").strip()
 if not st.session_state.authenticated:
     ui_theme.glass_panel(" Analyst Login")
-    pin = st.text_input("Enter Analyst PIN", type="password")
+    _warn = " ⚠️ Set ANALYST_PIN env variable before production use!" if not _ANALYST_PIN else ""
+    pin = st.text_input(f"Enter Analyst PIN{_warn}", type="password")
     if pin:
-        if pin == "1234":
+        if _ANALYST_PIN and pin == _ANALYST_PIN:
             st.session_state.authenticated = True
             st.rerun()
         else:
@@ -341,7 +343,7 @@ with tab_single:
             if hist.empty:
                 cache_file = os.path.join(features_dir, f"{live_ticker}_features.csv")
                 if os.path.exists(cache_file):
-                    df_cache = pd.read_csv(cache_file)
+                    df_cache = pd.read_csv(cache_file, index_col="Date", parse_dates=True)
                     hist = pd.DataFrame({
                         'Close': [df_cache['Close'].iloc[-1]],
                         'High': [df_cache['High'].iloc[-1]],
@@ -507,24 +509,19 @@ with tab_single:
                             'MACD_Signal': float(last_row['MACD_Signal'].iloc[0]) if 'MACD_Signal' in last_row else 0.0,
                             'ATR': float(last_row['ATR'].iloc[0]) if 'ATR' in last_row else curr_close * 0.015,
                             'EMA_20': float(last_row['EMA_20'].iloc[0]) if 'EMA_20' in last_row else curr_close,
-                            'SMA_50': float(last_row['SMA_50'].iloc[0]) if 'SMA_50' in last_row else curr_close,
-                            'SMA_200': float(last_row['SMA_200'].iloc[0]) if 'SMA_200' in last_row else curr_close,
-                            'BB_Upper': float(last_row['BB_Upper'].iloc[0]) if 'BB_Upper' in last_row else curr_close * 1.03,
-                            'BB_Lower': float(last_row['BB_Lower'].iloc[0]) if 'BB_Lower' in last_row else curr_close * 0.97,
-                            'ADX': float(last_row['ADX'].iloc[0]) if 'ADX' in last_row else 25.0,
-                            'Stoch_K': float(last_row['Stoch_K'].iloc[0]) if 'Stoch_K' in last_row else 50.0,
+                            'SMA_50': float(df_cache['Close'].tail(50).mean()) if ('Close' in df_cache and len(df_cache) >= 50) else curr_close,
+                            'SMA_200': float(df_cache['Close'].tail(200).mean()) if ('Close' in df_cache and len(df_cache) >= 200) else curr_close,
+                            'BB_Upper': float(last_row['BB_High'].iloc[0]) if 'BB_High' in last_row else curr_close * 1.03,
+                            'BB_Lower': float(last_row['BB_Low'].iloc[0]) if 'BB_Low' in last_row else curr_close * 0.97,
+                            'ADX': float(last_row['ADX'].iloc[0]) if 'ADX' in last_row else None,
+                            'Stoch_K': float(last_row['Stoch_Oscillator'].iloc[0]) if 'Stoch_Oscillator' in last_row else 50.0,
                         },
                         'top_shap': [
                             f"Price Momentum ({'+' if float(last_row['SMA_10'].iloc[0]) > float(last_row['SMA_30'].iloc[0]) else '-'})",
                             f"RSI Momentum ({float(last_row['RSI'].iloc[0]):.1f})",
                             f"FinBERT Sentiment ({sentiment_text if 'sentiment_text' in locals() else 'Neutral'})"
                         ],
-                        'graham': {
-                            'pe_ratio': 24.5,
-                            'pb_ratio': 2.9,
-                            'eps': curr_close / 24.5,
-                            'bvps': curr_close / 2.9
-                        }
+                        'graham': {}
                     }
 
                     # ==========================================
@@ -563,6 +560,9 @@ with tab_single:
                             wins = 0
                             trades = 0
                             total_friction = 0.0
+                            total_stt = 0.0
+                            total_slippage = 0.0
+                            total_brokerage = 0.0
                             in_position = False
 
                             equity_series = [base_capital]
@@ -580,10 +580,13 @@ with tab_single:
                                 # Charge statutory turnover frictions ONLY on actual position entry/exit transitions
                                 if want_long != in_position:
                                     trades += 1
-                                    stt_cost = current_equity * 0.0010
-                                    slippage_cost = current_equity * 0.0005
-                                    brokerage_cost = 20.0
-                                    day_friction = stt_cost + slippage_cost + brokerage_cost
+                                    _stt = current_equity * 0.0010
+                                    _slip = current_equity * 0.0005
+                                    _brok = 20.0
+                                    day_friction = _stt + _slip + _brok
+                                    total_stt += _stt
+                                    total_slippage += _slip
+                                    total_brokerage += _brok
                                     total_friction += day_friction
                                     in_position = want_long
 
@@ -606,9 +609,9 @@ with tab_single:
                                 d_label = str(eval_window.index[i + 1])[:10] if hasattr(eval_window.index[i + 1], 'strftime') else f"T+{i+1}"
                                 plot_dates.append(d_label)
 
-                            stt_cost = total_friction * (0.0010 / 0.0015) if total_friction > 0 else 0.0
-                            slippage_cost = total_friction * (0.0005 / 0.0015) if total_friction > 0 else 0.0
-                            brokerage_cost = trades * 20.0
+                            stt_cost = total_stt
+                            slippage_cost = total_slippage
+                            brokerage_cost = total_brokerage
 
                             win_rate = (wins / max(1, sum(1 for r in daily_strategy_returns if r != 0.0)) * 100)
                             net_pnl_rupees = current_equity - base_capital
@@ -921,7 +924,6 @@ with tab_single:
                         fig.update_xaxes(gridcolor='#3b3f51', zerolinecolor='#3b3f51')
                         fig.update_yaxes(title_text="Sentiment Score", secondary_y=True, showgrid=False)
                         
-                        ui_theme.apply_plotly_dark(fig)
                         ui_theme.apply_plotly_dark(fig)
                         st.plotly_chart(fig, use_container_width=True, theme=None)
 
